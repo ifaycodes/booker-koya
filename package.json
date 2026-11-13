@@ -1,0 +1,20 @@
+{
+  "name": "booker",
+  "version": "1.0.0",
+  "description": "book slots for your preferred provider. see available slots, your bookings and cancel them",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "migrate:down": "node src/models/down.js"
+  },
+  "author": "ifeoma",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "nodemon": "^3.1.14",
+    "pg": "^8.23.1"
+  },
+  "type": "module"
+}

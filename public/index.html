@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clinic Appointment Booking</title>
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --success: #16a34a;
+      --error: #dc2626;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 2rem 1rem; line-height: 1.5; }
+    .container { max-width: 840px; margin: 0 auto; }
+    header { margin-bottom: 2rem; }
+    h1 { font-size: 2rem; color: var(--text); }
+    p.sub { color: var(--muted); margin-top: 0.25rem; }
+
+    /* API Key Bar */
+    .key-bar { background: var(--card); border: 1px solid var(--border); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; gap: 0.5rem; align-items: center; }
+    .key-bar input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); }
+    .tab-btn { background: none; border: none; padding: 0.75rem 1.25rem; font-size: 1rem; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* Alert */
+    .alert { padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; display: none; }
+    .alert.success { background: #dcfce7; color: var(--success); border: 1px solid #bbf7d0; display: block; }
+    .alert.error { background: #fee2e2; color: var(--error); border: 1px solid #fecaca; display: block; }
+
+    /* Confirmation Card */
+    .confirmation-card { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; display: none; }
+    .confirmation-card.show { display: block; }
+    .confirmation-card h2 { color: var(--success); font-size: 1.25rem; margin-bottom: 0.75rem; }
+    .confirm-field { display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.95rem; border-bottom: 1px dashed #bbf7d0; }
+
+    /* Cards & Grids */
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .section-title { font-size: 1.25rem; font-weight: 600; }
+    .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; gap: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .card h3 { font-size: 1.15rem; color: var(--primary); }
+    .card .meta { font-size: 0.875rem; color: var(--muted); }
+
+    /* Buttons */
+    button { background: var(--primary); color: white; border: none; border-radius: 6px; padding: 0.6rem 1rem; cursor: pointer; font-weight: 500; font-size: 0.9rem; }
+    button:hover { background: var(--primary-hover); }
+    button:disabled { background: var(--muted); cursor: not-allowed; }
+    .btn-secondary { background: var(--border); color: var(--text); }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { background: var(--danger-hover); }
+
+    /* Search Bar */
+    .search-bar { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .search-bar input { flex: 1; padding: 0.6rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    .badge-confirmed { background: #dcfce7; color: var(--success); }
+    .badge-cancelled { background: #fee2e2; color: var(--error); }
+
+    /* Modal */
+    .booking-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 1rem; }
+    .booking-modal.open { display: flex; }
+    .modal-content { background: var(--card); border-radius: 8px; padding: 1.5rem; max-width: 420px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; }
+    .form-group input { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Clinic Appointment Portal</h1>
+      <p class="sub">Find an available appointment or manage your existing bookings.</p>
+    </header>
+
+    <!-- API Key Bar -->
+    <div class="key-bar">
+      <label for="apiKey" style="font-size:0.875rem; font-weight:600;">API Key:</label>
+      <input type="text" id="apiKey" placeholder="Enter X-API-Key..." value="">
+      <button onclick="saveApiKey()">Save</button>
+    </div>
+
+    <!-- Feedback Message Alert -->
+    <div id="alertBox" class="alert"></div>
+
+    <!-- Booking Confirmation Card -->
+    <div id="confirmationCard" class="confirmation-card">
+      <h2>🎉 Booking Confirmed!</h2>
+      <div class="confirm-field"><span>Booking Reference:</span><strong id="confId"></strong></div>
+      <div class="confirm-field"><span>Provider:</span><strong id="confProvider"></strong></div>
+      <div class="confirm-field"><span>Appointment Time:</span><strong id="confTime" style="color:var(--primary);"></strong></div>
+      <div class="confirm-field"><span>Patient Name:</span><span id="confName"></span></div>
+      <div class="confirm-field"><span>Patient Email:</span><span id="confEmail"></span></div>
+      <div class="confirm-field"><span>Status:</span><strong id="confStatus" style="color:var(--success);"></strong></div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tabSlotsBtn" onclick="switchTab('slots')">Available Slots</button>
+      <button class="tab-btn" id="tabBookingsBtn" onclick="switchTab('myBookings')">My Bookings</button>
+    </div>
+
+    <!-- Tab 1: Available Slots -->
+    <div id="tabSlots">
+      <div class="section-header">
+        <h2 class="section-title">Search & Book an Appointment</h2>
+      </div>
+      <!-- Search bar with optional provider input -->
+      <div class="search-bar" style="margin-bottom: 1.5rem;">
+        <input 
+          type="text" 
+          id="providerInput" 
+          placeholder="Filter by Provider (e.g. Dr Ade) - or leave blank for all"
+        >
+        <button onclick="fetchSlots()">Search Slots</button>
+      </div>
+      <div id="slotsContainer" class="slots-grid">
+        <p style="color:var(--muted);">See available appointments.</p>
+      </div>
+    </div>
+
+    <!-- Tab 2: My Bookings & Cancellation -->
+    <div id="tabMyBookings" style="display: none;">
+      <div class="section-header">
+        <h2 class="section-title">Lookup My Bookings</h2>
+      </div>
+      <div class="search-bar">
+        <input type="email" id="searchEmail" placeholder="Enter your email to find bookings (e.g. ada@example.com)">
+        <button onclick="lookupBookings(true)">Find Bookings</button>
+      </div>
+
+      <div id="bookingsList" class="slots-grid">
+        <p style="color:var(--muted);">Enter your email above to see your appointments.</p>
+      </div>
+
+      <div id="paginationControls" style="display:none; justify-content:center; margin-top: 1rem;">
+        <button id="nextPageBtn" onclick="loadNextPage()" class="btn-secondary">Load Next Page →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Booking Modal -->
+  <div id="bookingModal" class="booking-modal">
+    <div class="modal-content">
+      <h3 style="margin-bottom: 0.75rem;">Confirm Appointment</h3>
+      <div class="form-group">
+        <label>Selected Slot:</label>
+        <p id="modalSlotSummary" style="font-size:0.95rem; color:var(--primary); font-weight:600;"></p>
+      </div>
+      <div class="form-group">
+        <label for="patientName">Full Name:</label>
+        <input type="text" id="patientName" placeholder="e.g. Ada Obi" required>
+      </div>
+      <div class="form-group">
+        <label for="patientEmail">Email Address:</label>
+        <input type="email" id="patientEmail" placeholder="e.g. ada@example.com" required>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="button" onclick="submitBooking()" id="bookBtn">Confirm Booking</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedSlot = null;
+    let nextCursor = null;
+    let currentSearchEmail = '';
+
+    // Initialize API Key from storage
+    document.getElementById('apiKey').value = localStorage.getItem('clinic_api_key') || '';
+
+    function saveApiKey() {
+      const key = document.getElementById('apiKey').value.trim();
+      localStorage.setItem('clinic_api_key', key);
+      showAlert('API Key saved!', 'success');
+      fetchSlots();
+    }
+
+    function getApiKey() {
+      return document.getElementById('apiKey').value.trim() || localStorage.getItem('clinic_api_key') || '';
+    }
+
+    function showAlert(msg, type = 'error') {
+      const alert = document.getElementById('alertBox');
+      alert.textContent = msg;
+      alert.className = `alert ${type}`;
+      setTimeout(() => { alert.style.display = 'none'; }, 6000);
+    }
+
+    // Tab switcher
+    function switchTab(tab) {
+      document.getElementById('tabSlots').style.display = tab === 'slots' ? 'block' : 'none';
+      document.getElementById('tabMyBookings').style.display = tab === 'myBookings' ? 'block' : 'none';
+      document.getElementById('tabSlotsBtn').classList.toggle('active', tab === 'slots');
+      document.getElementById('tabBookingsBtn').classList.toggle('active', tab === 'myBookings');
+    }
+
+    // 1. Fetch available slots
+    async function fetchSlots() {
+      const container = document.getElementById('slotsContainer');
+      const provider = document.getElementById('providerInput').value.trim();
+      container.innerHTML = '<p style="color:var(--muted);">Loading available slots...</p>';
+
+      let url = '/slots';
+      if (provider) {
+        url += `?provider=${encodeURIComponent(provider)}`;
+      }
+
+      try {
+        const res = await fetch(url , {
+          headers: { 'X-API-Key': getApiKey() }
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          showAlert(err.error || 'Failed to fetch slots', 'error');
+          container.innerHTML = `<p style="color:var(--error);">${err.error || 'Failed to load slots'}</p>`;
+          return;
+        }
+
+        const data = await res.json();
+        const now = new Date();
+        const availableSlots = (data.slots || []).filter(s => s.available && new Date(s.start) > now);
+
+        if (availableSlots.length === 0) {
+          container.innerHTML = `<p style="color:var(--muted);">No available slots found ${provider ? `for "${provider}"` : ''}.</p>`;
+          return;
+        }
+
+        container.innerHTML = availableSlots.map(slot => {
+          const start = new Date(slot.start).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+          const end = new Date(slot.end).toLocaleTimeString([], { timeStyle: 'short' });
+          return `
+            <div class="card">
+              <div>
+                <h3>${slot.provider}</h3>
+                <div class="meta">📅 ${start} - ${end}</div>
+              </div>
+              <button onclick="openBookingModal('${slot.id}', '${slot.provider}', '${start}', '${end}')">Book Slot</button>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        showAlert('Could not connect to server', 'error');
+        container.innerHTML = '<p style="color:var(--error);">Connection error.</p>';
+      }
+    }
+
+    // Modal controls
+    function openBookingModal(id, provider, start, end) {
+      selectedSlot = { id, provider, start, end };
+      document.getElementById('modalSlotSummary').innerText = `${provider} • ${start} - ${end}`;
+      document.getElementById('bookingModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('bookingModal').classList.remove('open');
+      selectedSlot = null;
+    }
+
+    // 2. Submit booking & show full confirmation
+    async function submitBooking() {
+      const name = document.getElementById('patientName').value.trim();
+      const email = document.getElementById('patientEmail').value.trim();
+      const btn = document.getElementById('bookBtn');
+
+      if (!name || !email) {
+        showAlert('Please fill in both name and email.', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Booking...';
+
+      try {
+        const res = await fetch('/bookings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': getApiKey(),
+            'Idempotency-Key': crypto.randomUUID()
+          },
+          body: JSON.stringify({
+            slot_id: selectedSlot.id,
+            name: name,
+            email: email
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          showAlert(data.error || 'Failed to book slot', 'error');
+          return;
+        }
+
+        // Show Confirmation with appointment time & provider!
+        closeModal();
+        document.getElementById('confId').innerText = data.id;
+        document.getElementById('confProvider').innerText = selectedSlot.provider;
+        document.getElementById('confTime').innerText = `${selectedSlot.start} - ${selectedSlot.end}`;
+        document.getElementById('confName').innerText = data.name;
+        document.getElementById('confEmail').innerText = data.email;
+        document.getElementById('confStatus').innerText = data.status;
+        document.getElementById('confirmationCard').classList.add('show');
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        fetchSlots();
+      } catch (err) {
+        showAlert('Error sending booking request.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Confirm Booking';
+      }
+    }
+
+    // 3. Lookup Bookings (Level 4: pagination)
+    async function lookupBookings(reset = true) {
+      if (reset) {
+        currentSearchEmail = document.getElementById('searchEmail').value.trim();
+        nextCursor = null;
+      }
+
+      if (!currentSearchEmail) {
+        showAlert('Please enter an email address.', 'error');
+        return;
+      }
+
+      const listContainer = document.getElementById('bookingsList');
+      if (reset) listContainer.innerHTML = '<p style="color:var(--muted);">Loading bookings...</p>';
+
+      let url = `/bookings?email=${encodeURIComponent(currentSearchEmail)}&limit=10`;
+      if (nextCursor) url += `&cursor=${encodeURIComponent(nextCursor)}`;
+
+      try {
+        const res = await fetch(url, {
+          headers: { 'X-API-Key': getApiKey() }
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          showAlert(err.error || 'Failed to fetch bookings', 'error');
+          listContainer.innerHTML = `<p style="color:var(--error);">${err.error || 'No bookings found.'}</p>`;
+          return;
+        }
+
+        const data = await res.json();
+        const bookings = data.bookings || [];
+        nextCursor = data.next_cursor;
+
+        if (reset && bookings.length === 0) {
+          listContainer.innerHTML = '<p style="color:var(--muted);">No bookings found for this email.</p>';
+          document.getElementById('paginationControls').style.display = 'none';
+          return;
+        }
+
+        const cardsHtml = bookings.map(b => {
+          const createdAt = new Date(b.created_at).toLocaleString();
+          const isConfirmed = b.status === 'confirmed';
+          return `
+            <div class="card" id="card-${b.id}">
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
+                  <span class="badge ${isConfirmed ? 'badge-confirmed' : 'badge-cancelled'}">${b.status}</span>
+                  <span style="font-size:0.75rem; color:var(--muted);">Slot ID: ${b.slot_id}</span>
+                </div>
+                <h3>${b.name}</h3>
+                <div class="meta">Created: ${createdAt}</div>
+                <div class="meta" style="font-family:monospace; font-size:0.75rem;">ID: ${b.id}</div>
+              </div>
+              ${isConfirmed ? `<button onclick="cancelAppointment('${b.id}')" class="btn-danger">Cancel Booking</button>` : ''}
+            </div>
+          `;
+        }).join('');
+
+        if (reset) {
+          listContainer.innerHTML = cardsHtml;
+        } else {
+          listContainer.insertAdjacentHTML('beforeend', cardsHtml);
+        }
+
+        // Show/hide pagination button
+        document.getElementById('paginationControls').style.display = nextCursor ? 'flex' : 'none';
+      } catch (err) {
+        showAlert('Could not fetch bookings.', 'error');
+      }
+    }
+
+    function loadNextPage() {
+      if (nextCursor) {
+        lookupBookings(false);
+      }
+    }
+
+    // 4. Cancel Booking (Level 3)
+    async function cancelAppointment(id) {
+      if (!confirm('Are you sure you want to cancel this booking?')) return;
+
+      try {
+        const res = await fetch(`/bookings/${id}`, {
+          method: 'DELETE',
+          headers: { 'X-API-Key': getApiKey() }
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          showAlert(err.error || 'Failed to cancel booking', 'error');
+          return;
+        }
+
+        showAlert('Booking cancelled successfully!', 'success');
+        // Refresh bookings and slots
+        lookupBookings(true);
+        fetchSlots();
+      } catch (err) {
+        showAlert('Could not cancel booking.', 'error');
+      }
+    }
+
+    // Initial load
+    fetchSlots();
+  </script>
+</body>
+</html>
