@@ -18,8 +18,10 @@ export function createBookingRepository(db) {
 
         async getBookings(email) {
             const result = await db.query(
-                `SELECT *
-                FROM bookings 
+                `SELECT b.id, b.slot_id, b.name, b.email, b.status, b.created_at,
+                    s.start AS slot_start, s."end" AS slot_end, s.provider
+                FROM bookings b
+                LEFT JOIN slots s ON b.slot_id = s.id
                 WHERE email = $1 ORDER BY created_at ASC, id ASC`, [email]
             );
             return result.rows;
@@ -27,7 +29,11 @@ export function createBookingRepository(db) {
 
         async getABooking(id) {
             const result = await db.query(
-                `SELECT * FROM bookings WHERE id = $1`, [id]
+                `SELECT b.id, b.slot_id, b.name, b.email, b.status, b.created_at,
+                    s.start AS slot_start, s."end" AS slot_end, s.provider
+                FROM bookings b
+                LEFT JOIN slots s ON b.slot_id = s.id
+                WHERE b.id = $1`, [id]
             );
             return result.rows[0];
         },

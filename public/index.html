@@ -51,7 +51,7 @@
     .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; gap: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .card h3 { font-size: 1.15rem; color: var(--primary); }
-    .card .meta { font-size: 0.875rem; color: var(--muted); }
+    .card .meta { font-size: 0.5rem; color: var(--muted); }
 
     /* Buttons */
     button { background: var(--primary); color: white; border: none; border-radius: 6px; padding: 0.6rem 1rem; cursor: pointer; font-weight: 500; font-size: 0.9rem; }
@@ -313,6 +313,20 @@
 
         const data = await res.json();
         if (!res.ok) {
+          closeModal();
+          
+           if (res.status === 409) {
+            showAlert('Sorry, this slot has been booked. Please choose another.', 'error');
+            fetchSlots();
+            return;
+          }
+
+          if (res.status === 429) {
+            const retryAfter = res.headers.get('Retry-After');
+            showAlert(`🚫 Too many booking attempts. Please wait ${retryAfter || 60} seconds before trying again.`, 'error');
+            return;
+          }
+          
           showAlert(data.error || 'Failed to book slot', 'error');
           return;
         }
@@ -326,6 +340,7 @@
         document.getElementById('confEmail').innerText = data.email;
         document.getElementById('confStatus').innerText = data.status;
         document.getElementById('confirmationCard').classList.add('show');
+        showAlert('Booking confirmed. Your appointment has been reserved.', 'success');
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
         fetchSlots();
@@ -380,16 +395,23 @@
         const cardsHtml = bookings.map(b => {
           const createdAt = new Date(b.created_at).toLocaleString();
           const isConfirmed = b.status === 'confirmed';
+          let appointmentTime = 'N/A';
+          if (b.slot_start) {
+            const start = new Date(b.slot_start).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+            const end = new Date(b.slot_end).toLocaleTimeString([], { timeStyle: 'short' });
+            appointmentTime = `${start} – ${end}`;
+          }
+
           return `
             <div class="card" id="card-${b.id}">
               <div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
                   <span class="badge ${isConfirmed ? 'badge-confirmed' : 'badge-cancelled'}">${b.status}</span>
-                  <span style="font-size:0.75rem; color:var(--muted);">Slot ID: ${b.slot_id}</span>
                 </div>
-                <h3>${b.name}</h3>
+                <h4>${b.provider || "Unknown Provider"}</h4>
                 <div class="meta">Created: ${createdAt}</div>
-                <div class="meta" style="font-family:monospace; font-size:0.75rem;">ID: ${b.id}</div>
+                <div class="meta">📅 ${appointmentTime}</div>
+                <div class="meta" style="margin-top:0.25rem;">👤 ${b.name}</div>
               </div>
               ${isConfirmed ? `<button onclick="cancelAppointment('${b.id}')" class="btn-danger">Cancel Booking</button>` : ''}
             </div>
