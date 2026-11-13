@@ -31,6 +31,7 @@ router.get('/slots', async (req, res) => {
 router.post('/bookings', async (req, res) => {
     try {
         const idempKey = req.get('Idempotency-Key');
+        const apiKey = req.get('X-API-Key');
         let {slot_id, name, email} = req.body;
         
         if (!slot_id || !name || !email) {
@@ -53,7 +54,7 @@ router.post('/bookings', async (req, res) => {
         email = email.toLowerCase().trim();
         slot_id = slot_id.trim();
 
-        const limitCheck = checkAndRecordAttempt(email);
+        const limitCheck = checkAndRecordAttempt(apiKey);
         if (!limitCheck.allowed) {
             res.set('Retry-After', String(limitCheck.retryAfter));
             return res.status(429).json({ error: 'Too many attempts for this email' });

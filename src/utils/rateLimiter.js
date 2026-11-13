@@ -1,11 +1,11 @@
-const attemptsByEmail = new Map();
+const attemptsByApi = new Map();
 
 const WINDOW_MS = 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
-export function checkAndRecordAttempt(email) {
+export function checkAndRecordAttempt(apiKey) {
     const now = Date.now();
-    const timestamps = attemptsByEmail.get(email) || [];
+    const timestamps = attemptsByApi.get(apiKey) || [];
 
     const recent = timestamps.filter(ts => now - ts < WINDOW_MS);
 
@@ -14,15 +14,15 @@ export function checkAndRecordAttempt(email) {
         const waitMs = oldest + WINDOW_MS - now;
         const retryAfterSeconds = Math.max(1, Math.ceil(waitMs / 1000));
 
-        attemptsByEmail.set(email, recent);
+        attemptsByApi.set(apiKey, recent);
         return { allowed: false, retryAfter: retryAfterSeconds };
     }
 
     recent.push(now);
-    attemptsByEmail.set(email, recent);
+    attemptsByApi.set(apiKey, recent);
     return { allowed: true };
 }
 
 export function resetRateLimits() {
-    attemptsByEmail.clear();
+    attemptsByApi.clear();
 }
