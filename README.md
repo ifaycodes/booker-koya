@@ -59,6 +59,7 @@ npm start
 The app runs on http://localhost:3000.
 
 ## Project Folder
+```bash
 ├── index.js                   # App entry point
 ├── public/
 │   └── index.html             # Web interface
@@ -77,3 +78,4 @@ The app runs on http://localhost:3000.
     │   └── routes.js           # Express route handlers
     └── utils/
         └── rateLimiter.js      # Sliding window rate limiter
+```

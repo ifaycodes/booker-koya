@@ -183,11 +183,19 @@
     let currentSearchEmail = '';
 
     // Initialize API Key from storage
-    document.getElementById('apiKey').value = localStorage.getItem('clinic_api_key') || '';
+    if (localStorage.getItem('clinic_api_key')) {
+      document.getElementById('apiKey').placeholder = '✓ API Key saved';
+    }
 
     function saveApiKey() {
       const key = document.getElementById('apiKey').value.trim();
+      if (!key) {
+        showAlert('Please enter an API key.', 'error');
+        return;
+      }
       localStorage.setItem('clinic_api_key', key);
+      document.getElementById('apiKey').value = '';
+      document.getElementById('apiKey').placeholder = '✓ API Key saved';
       showAlert('API Key saved!', 'success');
       fetchSlots();
     }
